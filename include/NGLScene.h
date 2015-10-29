@@ -133,7 +133,15 @@ private:
     void plotLine(float x0,float y0,float x1,float y1);
 
     std::vector<ngl::Vec3> m_linePoints;
+    std::vector<ngl::Vec3> m_planePoints;
+    std::vector<ngl::Vec3> m_sphereOutOfPlanePoints;
+
     ngl::Transformation m_transform;
+
+    ngl::Vec3 getPerpendicular(ngl::Vec3 n);
+    void convertCartesianToSpherical(float cartesianX,float cartesianY,float cartesianZ);
+
+
 };
 
 

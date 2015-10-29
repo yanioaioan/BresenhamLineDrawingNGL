@@ -126,8 +126,71 @@ void NGLScene::initializeGL()
   float x1=15;
   float y0=-5;
   float y1=5;
-  plotLine(x0,y0,x1,y1);
+//  plotLine(x0,y0,x1,y1);
+
+  //plot plane out fo 100 points
+  for(int i=0; i<100; ++i)
+  {
+      for(int j=0; j<100; ++j)
+      {
+          m_planePoints.push_back(ngl::Vec3(i/10,1,j/10));
+
+          convertCartesianToSpherical(i/10,1,j/10);
+      }
+  }
+
+
 }
+
+
+
+void NGLScene::convertCartesianToSpherical(float cartesianX,float cartesianY,float cartesianZ)
+{
+   float r=sqrt(cartesianX*cartesianX+cartesianY*cartesianY+cartesianZ*cartesianZ);
+   float theta = atan2(cartesianY,cartesianX);
+   float phi = atan2(sqrt(cartesianX*cartesianX+cartesianY*cartesianY),cartesianZ);
+   std::cout<<r<<", "<<theta*(180/M_PI)<<", "<<phi*(180/M_PI)<<std::endl;
+
+//   float x=r*sin(phi)*cos(theta);
+//   float y=r*sin(phi)*sin(theta);
+//   float z=r*cos(phi);
+
+   //Inverse Stereographic projection
+   //get points on a sphere out of x,y,z points on plane
+   //Reference https://www.physicsforums.com/threads/inverse-of-the-stereographic-projection.108175/
+
+
+
+
+// ngl::Vec3 invSteroProjPoint (2*cartesianX/(r*r + 1), (r*r - 1)/(r*r + 1),  2*cartesianZ/(r*r + 1));
+ ngl::Vec3 invSteroProjPoint (4*cartesianX/cartesianX*cartesianX+cartesianZ*cartesianZ+4, 1-(8/cartesianX*cartesianX+cartesianZ*cartesianZ+4) , 4*cartesianZ/cartesianX*cartesianX+cartesianZ*cartesianZ+4);
+
+
+
+   m_sphereOutOfPlanePoints.push_back(/*r,phi,theta*/  invSteroProjPoint);
+
+}
+
+ngl::Vec3 NGLScene::getPerpendicular(ngl::Vec3 n)
+{
+//  // find smallest component
+//  int min=0;
+//  for (int i=1; i<3; ++i)
+//    if (abs(n[min])>abs(n[i]))
+//      min=i;
+
+//  // get the other two indices
+//  int a=(i+1)%3;
+//  int b=(i+2)%3;
+
+//  ngl::Vec3 result;
+//  result[i]=0.f;
+//  result[a]=n[b];
+//  result[b]=-n[a];
+//  return result;
+}
+
+
 
 void NGLScene::plotLine(float x0, float y0, float x1, float y1)
 {
@@ -138,7 +201,7 @@ void NGLScene::plotLine(float x0, float y0, float x1, float y1)
     m_linePoints.push_back(ngl::Vec3(x0,y0,0));
     int y=y0;
 
-    for(int x=x0+1;x<x1;x++)
+    for (int x=x0+1;x<x1;x++)
     {
         m_linePoints.push_back(ngl::Vec3(x,y,0));
         D = D + 2*dy;
@@ -148,8 +211,6 @@ void NGLScene::plotLine(float x0, float y0, float x1, float y1)
             D = D -(2*dx);
         }
     }
-
-
 }
 
 void NGLScene::loadMatricesToShader()
@@ -170,6 +231,8 @@ void NGLScene::loadMatricesToShader()
   shader->setShaderParamFromMat3("normalMatrix",normalMatrix);
   shader->setShaderParamFromMat4("M",M);
 }
+
+static int rot;
 
 void NGLScene::paintGL()
 {
@@ -198,14 +261,35 @@ void NGLScene::paintGL()
   prim->createSphere("mysphere",1,10);
   // draw
 
-  BOOST_FOREACH(ngl::Vec3 point, m_linePoints)
+//  BOOST_FOREACH(ngl::Vec3 point, m_linePoints)
+//  {
+//    m_transform.setScale(0.1,0.1,0.1);
+//    m_transform.setPosition(point.m_x/10,point.m_y/10,0);
+//    loadMatricesToShader();
+//    prim->draw("mysphere");
+//  }
+
+  BOOST_FOREACH(ngl::Vec3 point, m_planePoints)
   {
-    m_transform.setScale(0.1,0.1,0.1);
-    m_transform.setPosition(point.m_x/10,point.m_y/10,0);
+//    m_transform.setScale(0.1,0.1,0.1);
+    m_transform.setPosition(point.m_x,0,point.m_z);
     loadMatricesToShader();
     prim->draw("mysphere");
   }
 
+
+  BOOST_FOREACH(ngl::Vec3 point, m_sphereOutOfPlanePoints)
+  {
+      m_transform.reset();
+      {
+        m_transform.setPosition(point.m_x,point.m_y,point.m_z);// move r units away from origin
+
+        m_transform.setScale(0.1,0.1,0.1);
+        //    m_transform.setPosition(point.m_x/10,point.m_y/10,point.m_z/10);
+        loadMatricesToShader();
+        prim->draw("mysphere");
+      }
+  }
 
 
 }
